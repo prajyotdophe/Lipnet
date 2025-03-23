@@ -1,0 +1,7 @@
+# Model files
+*.h5 filter=lfs diff=lfs merge=lfs -text
+# Video files
+*.mpg filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+# Data files
+*.align filter=lfs diff=lfs merge=lfs -text 
