@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lip Reading AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container-fluid {
+            padding: 2rem;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transition: transform 0.3s ease;
+            height: 100%;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            margin: 0 auto;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .video-preview {
+            width: 100%;
+            display: block;
+        }
+        .result-card {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #0d6efd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .prediction-container {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(13, 110, 253, 0.1);
+            border-radius: 10px;
+        }
+        .prediction-label {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+        .prediction-text {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0d6efd;
+            margin: 0;
+        }
+        .actual-text {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #198754;
+            margin: 0;
+        }
+        .similarity-score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+        .dataset-list {
+            max-height: 80vh;
+            overflow-y: auto;
+            padding-right: 1rem;
+        }
+        .dataset-item {
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .dataset-item:hover {
+            background: rgba(13, 110, 253, 0.1);
+            transform: translateX(5px);
+        }
+        .dataset-item.active {
+            background: rgba(13, 110, 253, 0.2);
+            border-left: 4px solid #0d6efd;
+        }
+        .word-label {
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .filename-text {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .visualization-container {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+        }
+        .visualization-image {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            display: block;
+        }
+        .analysis-container {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-card {
+            padding: 1rem;
+            background: rgba(13, 110, 253, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .frame-slider {
+            width: 100%;
+            margin: 1rem 0;
+        }
+        .text-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .comparison-card {
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .actual-card {
+            background: rgba(25, 135, 84, 0.1);
+        }
+        .predicted-card {
+            background: rgba(13, 110, 253, 0.1);
+        }
+        .placeholder-text {
+            font-size: 2rem;
+            color: #6c757d;
+            text-align: center;
+            opacity: 0.7;
+            animation: pulse 2s infinite;
+            background: linear-gradient(90deg, #6c757d, #adb5bd, #6c757d);
+            background-size: 200% auto;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: none;
+        }
+        @keyframes pulse {
+            0% {
+                background-position: 0% center;
+                opacity: 0.5;
+            }
+            50% {
+                background-position: 100% center;
+                opacity: 0.8;
+            }
+            100% {
+                background-position: 0% center;
+                opacity: 0.5;
+            }
+        }
+        /* Add new welcome animation styles */
+        .welcome-container {
+            text-align: center;
+            padding: 4rem 2rem;
+            margin-top: 2rem;
+        }
+        
+        .welcome-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(120deg, #0d6efd, #198754, #dc3545, #0dcaf0);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 8s ease infinite;
+        }
+        
+        .welcome-subtitle {
+            font-size: 1.5rem;
+            color: #6c757d;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease forwards 0.5s;
+        }
+        
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-icon {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(120deg, #0d6efd, #198754);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: bounce 2s ease infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* Add new analysis styles */
+        .analysis-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .analysis-header h4 {
+            margin: 0;
+            color: #0d6efd;
+            font-weight: bold;
+        }
+
+        .analysis-section {
+            margin-bottom: 2rem;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .metric-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+            color: #0d6efd;
+        }
+
+        .metric-title {
+            font-size: 1rem;
+            color: #666;
+            margin: 0;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0d6efd;
+            margin: 0.5rem 0;
+        }
+
+        .metric-subtitle {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0d6efd, #198754);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .predictions-list {
+            margin-top: 1.5rem;
+        }
+
+        .prediction-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .prediction-item:hover {
+            transform: translateX(5px);
+            background: rgba(13, 110, 253, 0.1);
+        }
+
+        .prediction-rank {
+            font-weight: bold;
+            color: #0d6efd;
+            margin-right: 1rem;
+        }
+
+        .prediction-word {
+            flex-grow: 1;
+            font-size: 1.1rem;
+        }
+
+        .prediction-confidence {
+            background: #0d6efd;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Dataset Sidebar -->
+            <div class="col-md-3">
+                <div class="card p-4">
+                    <h3 class="mb-4">Dataset Videos</h3>
+                    <div class="dataset-list">
+                        {% for video in videos %}
+                        <div class="dataset-item" onclick="selectDatasetVideo('{{ video.filename }}', '{{ video.word }}', '{{ video.actual_text }}')">
+                            <div class="word-label">{{ video.word }}</div>
+                            <div class="filename-text">{{ video.filename }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9">
+                <div class="card p-4 animate__animated animate__fadeIn">
+                    <h1 class="text-center mb-4">Lip Reading AI</h1>
+
+                    <div class="welcome-container" id="welcomeMessage">
+                        <div class="welcome-text">Welcome to Lip Reading AI</div>
+                        <div class="welcome-subtitle">Select a video from the dataset to begin your experience</div>
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="loading-spinner"></div>
+                        <p class="mt-3">Processing your video...</p>
+                    </div>
+
+                    <div class="result-card" id="resultCard">
+                        <div class="video-container">
+                            <video class="video-preview" id="videoPreview" controls></video>
+                        </div>
+                        
+                        <div class="prediction-container">
+                            <div class="text-comparison">
+                                <div class="comparison-card actual-card">
+                                    <div class="prediction-label">Actual Text:</div>
+                                    <div class="actual-text" id="actualText"></div>
+                                    <div class="placeholder-text" id="actualPlaceholder">Select a video...</div>
+                                </div>
+                                <div class="comparison-card predicted-card">
+                                    <div class="prediction-label">Predicted Text:</div>
+                                    <div class="prediction-text" id="predictionText"></div>
+                                    <div class="placeholder-text" id="predictedPlaceholder">Waiting for prediction...</div>
+                                </div>
+                            </div>
+                            <div class="similarity-score text-center mt-3">
+                                Similarity Score: <span id="similarityScore">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- Visualization Section -->
+                        <div class="visualization-container">
+                            <h4>Frame Analysis</h4>
+                            <input type="range" class="frame-slider" id="frameSlider" min="0" max="74" value="0">
+                            <div class="text-center mb-3">Frame: <span id="frameNumber">0</span></div>
+                            <img id="visualizationImage" class="visualization-image" alt="Frame visualization">
+                        </div>
+
+                        <!-- Analysis Section -->
+                        <div class="analysis-container">
+                            <div class="analysis-header">
+                                <h4>Video Analysis</h4>
+                            </div>
+                            
+                            <div class="analysis-section">
+                                <h5>Performance Metrics</h5>
+                                <div class="analysis-grid">
+                                    <div class="metric-card">
+                                        <div class="metric-header">
+                                            <span class="metric-icon">🎯</span>
+                                            <h6 class="metric-title">Prediction Confidence</h6>
+                                        </div>
+                                        <div class="metric-value" id="confidenceValue">0%</div>
+                                        <div class="metric-subtitle">Model's confidence in prediction</div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="confidenceBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <div class="metric-header">
+                                            <span class="metric-icon">🎭</span>
+                                            <h6 class="metric-title">Text Similarity</h6>
+                                        </div>
+                                        <div class="metric-value" id="accuracyValue">-</div>
+                                        <div class="metric-subtitle">Match between predicted and actual text</div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="accuracyBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card">
+                                        <div class="metric-header">
+                                            <span class="metric-icon">⏱️</span>
+                                            <h6 class="metric-title">Processing Time</h6>
+                                        </div>
+                                        <div class="metric-value" id="processingTimeValue">0ms</div>
+                                        <div class="metric-subtitle">Time taken to process video</div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="processingTimeBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card">
+                                        <div class="metric-header">
+                                            <span class="metric-icon">🎞️</span>
+                                            <h6 class="metric-title">Frame Analysis</h6>
+                                        </div>
+                                        <div class="metric-value" id="frameCountValue">0</div>
+                                        <div class="metric-subtitle">Total frames processed</div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="frameCountBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card">
+                                        <div class="metric-header">
+                                            <span class="metric-icon">📊</span>
+                                            <h6 class="metric-title">Word Length</h6>
+                                        </div>
+                                        <div class="metric-value" id="wordLengthValue">0</div>
+                                        <div class="metric-subtitle">Characters in prediction</div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="wordLengthBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="metric-card">
+                                        <div class="metric-header">
+                                            <span class="metric-icon">🔄</span>
+                                            <h6 class="metric-title">Frame Rate</h6>
+                                        </div>
+                                        <div class="metric-value" id="frameRateValue">0 fps</div>
+                                        <div class="metric-subtitle">Video frame rate</div>
+                                        <div class="progress-bar">
+                                            <div class="progress-fill" id="frameRateBar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const loading = document.getElementById('loading');
+        const resultCard = document.getElementById('resultCard');
+        const videoPreview = document.getElementById('videoPreview');
+        const predictionText = document.getElementById('predictionText');
+        const actualText = document.getElementById('actualText');
+        const similarityScore = document.getElementById('similarityScore');
+        const frameSlider = document.getElementById('frameSlider');
+        const frameNumber = document.getElementById('frameNumber');
+        const visualizationImage = document.getElementById('visualizationImage');
+        const confidenceValue = document.getElementById('confidenceValue');
+        const meanIntensityValue = document.getElementById('meanIntensityValue');
+        const stdIntensityValue = document.getElementById('stdIntensityValue');
+        const topPredictions = document.getElementById('topPredictions');
+        const actualPlaceholder = document.getElementById('actualPlaceholder');
+        const predictedPlaceholder = document.getElementById('predictedPlaceholder');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+
+        let currentVideoPath = null;
+
+        frameSlider.addEventListener('input', (e) => {
+            const frameIdx = parseInt(e.target.value);
+            frameNumber.textContent = frameIdx;
+            if (currentVideoPath) {
+                updateVisualization(currentVideoPath, frameIdx);
+            }
+        });
+
+        // Show placeholders by default
+        document.addEventListener('DOMContentLoaded', function() {
+            actualText.style.display = 'none';
+            predictionText.style.display = 'none';
+            actualPlaceholder.style.display = 'block';
+            predictedPlaceholder.style.display = 'block';
+        });
+
+        function selectDatasetVideo(filename, word, actualTextValue) {
+            // Hide welcome message
+            welcomeMessage.style.display = 'none';
+            
+            // Remove active class from all items
+            document.querySelectorAll('.dataset-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Add active class to selected item
+            event.currentTarget.classList.add('active');
+            
+            // Show loading
+            loading.style.display = 'block';
+            resultCard.style.display = 'none';
+            
+            // Set video source
+            const videoUrl = `/get_video/${filename}`;
+            videoPreview.src = videoUrl;
+            videoPreview.style.display = 'block';
+            
+            // Store video path for visualization
+            currentVideoPath = filename;
+            
+            // Get prediction and analysis
+            fetch('/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: filename,
+                    word: word,
+                    actual_text: actualTextValue
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                resultCard.style.display = 'block';
+                
+                // Update texts and similarity score
+                actualText.textContent = data.actual_text || word;
+                predictionText.textContent = data.prediction;
+                similarityScore.textContent = `${(data.similarity_score * 100).toFixed(1)}%`;
+                
+                // Hide placeholders and show actual text
+                actualPlaceholder.style.display = 'none';
+                predictedPlaceholder.style.display = 'none';
+                actualText.style.display = 'block';
+                predictionText.style.display = 'block';
+                
+                // Add animations
+                actualText.classList.add('animate__animated', 'animate__fadeIn');
+                predictionText.classList.add('animate__animated', 'animate__fadeIn');
+                
+                // Update visualization and analysis
+                updateVisualization(currentVideoPath, 0);
+                updateAnalysis(data.analysis);
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                alert('Error processing video: ' + error.message);
+            });
+        }
+
+        function updateVisualization(videoPath, frameIdx) {
+            // Show loading state for visualization
+            visualizationImage.style.opacity = '0.5';
+            
+            // Construct the proper path for visualization
+            const visualizationPath = videoPath.startsWith('/get_video/') ? 
+                videoPath : `/get_video/${videoPath}`;
+
+            fetch('/visualize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    video_path: visualizationPath,
+                    frame_idx: frameIdx
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.visualization) {
+                    visualizationImage.src = `data:image/png;base64,${data.visualization}`;
+                    visualizationImage.style.opacity = '1';
+                } else {
+                    console.error('No visualization data received');
+                    alert('Error: No visualization data received');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating visualization:', error);
+                visualizationImage.style.opacity = '1';
+                const errorMessage = error.error || error.message || 'Failed to update visualization';
+                alert('Error: ' + errorMessage);
+            });
+        }
+
+        // Add event listener for when video is loaded
+        videoPreview.addEventListener('loadedmetadata', function() {
+            // Reset frame slider max value based on video duration and fps
+            const fps = 25; // Assuming 25 fps
+            const totalFrames = Math.min(Math.floor(this.duration * fps), 75);
+            frameSlider.max = totalFrames - 1;
+        });
+
+        function updateAnalysis(analysis) {
+            // Update confidence
+            const confidence = (analysis.confidence * 100).toFixed(1);
+            confidenceValue.textContent = `${confidence}%`;
+            document.getElementById('confidenceBar').style.width = `${confidence}%`;
+            
+            // Update accuracy/similarity
+            const accuracy = parseFloat(similarityScore.textContent);
+            document.getElementById('accuracyValue').textContent = `${accuracy}%`;
+            document.getElementById('accuracyBar').style.width = `${accuracy}%`;
+            
+            // Update processing time (assuming it's provided in milliseconds)
+            const processingTime = analysis.processing_time || 0;
+            document.getElementById('processingTimeValue').textContent = `${processingTime}ms`;
+            // Normalize processing time to percentage (assuming 1000ms is 100%)
+            const timePercentage = Math.min((processingTime / 1000) * 100, 100);
+            document.getElementById('processingTimeBar').style.width = `${timePercentage}%`;
+            
+            // Update frame count
+            const frameCount = analysis.frame_count || 0;
+            document.getElementById('frameCountValue').textContent = frameCount;
+            // Normalize frame count to percentage (assuming 75 frames is 100%)
+            const framePercentage = Math.min((frameCount / 75) * 100, 100);
+            document.getElementById('frameCountBar').style.width = `${framePercentage}%`;
+            
+            // Update word length
+            const wordLength = analysis.prediction ? analysis.prediction.length : 0;
+            document.getElementById('wordLengthValue').textContent = wordLength;
+            // Normalize word length to percentage (assuming max length of 20 chars)
+            const lengthPercentage = Math.min((wordLength / 20) * 100, 100);
+            document.getElementById('wordLengthBar').style.width = `${lengthPercentage}%`;
+            
+            // Update frame rate
+            const frameRate = analysis.frame_rate || 25;
+            document.getElementById('frameRateValue').textContent = `${frameRate} fps`;
+            // Normalize frame rate to percentage (assuming 30fps is 100%)
+            const ratePercentage = Math.min((frameRate / 30) * 100, 100);
+            document.getElementById('frameRateBar').style.width = `${ratePercentage}%`;
+        }
+    </script>
+</body>
+</html> 
